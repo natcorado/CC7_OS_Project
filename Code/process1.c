@@ -13,7 +13,7 @@ int main(void)
  
     while (1)
     {
-        for (c = '0'; c <= '9'; c++)
+        for (c = 'A'; c <= 'B'; c++)
         {
             uart_send(c);
             uart_send('\n');

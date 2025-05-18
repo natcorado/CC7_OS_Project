@@ -1,4 +1,26 @@
-#include "os.h"
+extern void PUT32(unsigned int, unsigned int);
+extern unsigned int GET32(unsigned int);
+extern void enable_irq(void);
+
+// Hardware registers
+#define UART0_BASE     0x44E09000
+#define UART_THR       (UART0_BASE + 0x00)
+#define UART_LSR       (UART0_BASE + 0x14)
+#define UART_LSR_THRE  0x20
+
+#define DMTIMER2_BASE    0x48040000
+#define TCLR             (DMTIMER2_BASE + 0x38)
+#define TCRR             (DMTIMER2_BASE + 0x3C)
+#define TISR             (DMTIMER2_BASE + 0x28)
+#define TIER             (DMTIMER2_BASE + 0x2C)
+#define TLDR             (DMTIMER2_BASE + 0x40)
+
+#define INTCPS_BASE      0x48200000
+#define INTC_MIR_CLEAR2  (INTCPS_BASE + 0xC8)
+#define INTC_CONTROL     (INTCPS_BASE + 0x48)
+
+#define CM_PER_BASE      0x44E00000
+#define CM_PER_TIMER2_CLKCTRL (CM_PER_BASE + 0x80)
 
 unsigned int seed = 12345;
 
@@ -8,7 +30,7 @@ unsigned int rand(void) {
 }
 
 void delay(void) {
-    for(volatile int i = 0; i < 100000; i++);
+    for(volatile int i = 0; i < 10000; i++) { }
 }
 
 void uart_send(unsigned char x) {
@@ -45,41 +67,36 @@ void uart_puthex(unsigned int num) {
 }
 
 void timer_init(void) {
-    uart_puts("Step 1: Enable timer clock\n");
     PUT32(CM_PER_TIMER2_CLKCTRL, 0x2);
 
-    uart_puts("Step 2: Unmask IRQ 68\n");
     PUT32(INTC_MIR_CLEAR2, 1 << (68 - 64));
-    PUT32(INTCPS_BASE + 0x110, 0x0);  // INTC_ILR68: Priority 0, IRQ not FIQ
+    PUT32(INTCPS_BASE + 0x110, 0x0);  
 
-    uart_puts("Step 3: Stop timer\n");
     PUT32(TCLR, 0);
 
-    uart_puts("Step 4: Clear interrupts\n");
     PUT32(TISR, 0x7);
 
-    uart_puts("Step 5: Set load value\n");
-    PUT32(TLDR, 0xFE91CA00);
+    PUT32(TLDR, 0xFFFF0000);  
+    PUT32(TCRR, 0xFFFF0000); 
 
-    uart_puts("Step 6: Set counter\n");
-    PUT32(TCRR, 0xFE91CA00);
-
-    uart_puts("Step 7: Enable overflow interrupt\n");
     PUT32(TIER, 0x2);
 
-    uart_puts("Step 8: Start timer with auto-reload\n");
     PUT32(TCLR, 0x3);
 
-    uart_puts("Timer initialized\n");
+    uart_send('T');
 }
 
 void timer_irq_handler(void) {
-    // Clear the timer interrupt status first
+
     PUT32(TISR, 0x2);
     
-    // Send the interrupt message
-    uart_puts("\r\nTimer Interrupt!\r\n");
     
-    // Acknowledge the interrupt controller last
+    uart_send('!');
+    uart_send('\r');
+    uart_send('\n');
+    
     PUT32(INTC_CONTROL, 0x1);
+
+    while (1) {
+    }
 }

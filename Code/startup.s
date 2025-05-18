@@ -43,26 +43,10 @@ vector_table:
     b .
 
 irq_handler:
-    sub lr, lr, #4              @ Adjust LR to correct return address
-    srsdb sp!, #0x13           @ Save return state on supervisor stack
-    cpsid i                    @ Disable interrupts
-    push {r0-r12, lr}         @ Save all registers
-    
-    @ Save SPSR
-    mrs r0, spsr
-    push {r0}
-    
-    @ Call the C interrupt handler
+    push {r0-r12, lr}
     bl timer_irq_handler
-    
-    @ Restore SPSR
-    pop {r0}
-    msr spsr_cxsf, r0
-    
-    @ Restore registers and return
     pop {r0-r12, lr}
-    cpsie i                    @ Re-enable interrupts
-    rfefd sp!                  @ Return from exception and restore CPSR
+    subs pc, lr, #4
 
 .section .bss
 .align 4
