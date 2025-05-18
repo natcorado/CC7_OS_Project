@@ -1,4 +1,3 @@
-
 extern void uart_send(unsigned char);
 extern void enable_irq(void);
 extern void timer_irq_handler(void);
@@ -16,6 +15,7 @@ int main(void)
         for (c = 'A'; c <= 'B'; c++)
         {
             uart_send(c);
+            uart_send('\r');
             uart_send('\n');
         }
     }
