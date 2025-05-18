@@ -1,0 +1,93 @@
+MEMORY
+{
+    os_code(rx): ORIGIN = 0x80000000, LENGTH = 32K
+    os_data(rw): ORIGIN = 0x80004000, LENGTH = 16K
+    os_stack(rw): ORIGIN = 0x80008000, LENGTH = 32K
+    
+    p1_code(rx): ORIGIN = 0x80010000, LENGTH = 64K
+    p1_stack(rw): ORIGIN = 0x80018000, LENGTH = 32K
+    
+    p2_code(rx): ORIGIN = 0x80020000, LENGTH = 64K
+    p2_stack(rw): ORIGIN = 0x80028000, LENGTH = 32K
+}
+
+SECTIONS
+{
+
+    .os.text : {
+        *(.text*)
+        *(.rodata*)
+        EXCLUDE_FILE(*process1.o *process2.o) *(.text*)
+        EXCLUDE_FILE(*process1.o *process2.o) *(.rodata*)
+    } > os_code
+
+    .os.data : {
+        __os_data_start__ = .;
+        EXCLUDE_FILE(*process1.o *process2.o) *(.data*)
+        __os_data_end__ = .;
+    } > os_data
+
+    .os.bss : {
+        __os_bss_start__ = .;
+        EXCLUDE_FILE(*process1.o *process2.o) *(.bss*)
+        EXCLUDE_FILE(*process1.o *process2.o) *(COMMON)
+        __os_bss_end__ = .;
+    } > os_data
+
+    .os.stack (NOLOAD) : {
+        _os_stack_bottom = .;
+        . += 32K;
+        _os_stack_top = .;
+    } > os_stack
+
+    /* Process 1 sections */
+    .p1.text : {
+        _process1_start = .;
+        *process1.o(.text*)
+        *process1.o(.rodata*)
+    } > p1_code
+
+    .p1.data : {
+        __p1_data_start__ = .;
+        *process1.o(.data*)
+        __p1_data_end__ = .;
+    } > p1_code
+
+    .p1.bss : {
+        __p1_bss_start__ = .;
+        *process1.o(.bss*)
+        *process1.o(COMMON)
+        __p1_bss_end__ = .;
+    } > p1_code
+
+    .p1.stack (NOLOAD) : {
+        _process1_stack_bottom = .;
+        . += 32K;
+        _process1_stack_top = .;
+    } > p1_stack
+
+    .p2.text : {
+        _process2_start = .;
+        *process2.o(.text*)
+        *process2.o(.rodata*)
+    } > p2_code
+
+    .p2.data : {
+        __p2_data_start__ = .;
+        *process2.o(.data*)
+        __p2_data_end__ = .;
+    } > p2_code
+
+    .p2.bss : {
+        __p2_bss_start__ = .;
+        *process2.o(.bss*)
+        *process2.o(COMMON)
+        __p2_bss_end__ = .;
+    } > p2_code
+
+    .p2.stack (NOLOAD) : {
+        _process2_stack_bottom = .;
+        . += 32K;
+        _process2_stack_top = .;
+    } > p2_stack
+}
