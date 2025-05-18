@@ -2,7 +2,6 @@ extern void PUT32(unsigned int, unsigned int);
 extern unsigned int GET32(unsigned int);
 extern void enable_irq(void);
 
-// Hardware registers
 #define UART0_BASE     0x44E09000
 #define UART_THR       (UART0_BASE + 0x00)
 #define UART_LSR       (UART0_BASE + 0x14)
@@ -22,6 +21,15 @@ extern void enable_irq(void);
 #define CM_PER_BASE      0x44E00000
 #define CM_PER_TIMER2_CLKCTRL (CM_PER_BASE + 0x80)
 
+typedef struct {
+    unsigned int pid;
+    unsigned int sp;
+    unsigned int state;
+
+} PCB;
+
+PCB pcb_array[2];
+
 unsigned int seed = 12345;
 
 unsigned int rand(void) {
@@ -32,6 +40,13 @@ unsigned int rand(void) {
 void delay(void) {
     for(volatile int i = 0; i < 10000; i++) { }
 }
+
+/*  UART RELATED FUNCTIONS
+    -- uart_send: send a character to the UART
+    -- uart_puts: send a string to the UART
+    -- uart_putnum: send a number to the UART (not used in this OS)
+    -- uart_puthex: send a hexadecimal number to the UART (not used in this OS)
+*/
 
 void uart_send(unsigned char x) {
     while ((GET32(UART_LSR) & UART_LSR_THRE) == 0);
@@ -66,6 +81,11 @@ void uart_puthex(unsigned int num) {
     uart_send('\n');
 }
 
+/*  TIMER RELATED FUNCTIONS
+    -- timer_init: initialize the timer
+    -- timer_irq_handler: handle the timer interrupt
+*/
+
 void timer_init(void) {
     PUT32(CM_PER_TIMER2_CLKCTRL, 0x2);
 
@@ -82,10 +102,15 @@ void timer_init(void) {
     PUT32(TIER, 0x2);
 
     PUT32(TCLR, 0x3);
-
-    uart_send('T');
 }
 
+
+/* CPSR -> Current program status register
+   SPSR -> Saved program status register: The SPSR is a 
+   copy of the CPSR that gets automatically saved when:
+   an interrupt occurs ????? :,) why?
+
+*/
 void timer_irq_handler(void) {
 
     PUT32(TISR, 0x2);
@@ -94,9 +119,20 @@ void timer_irq_handler(void) {
     uart_send('!');
     uart_send('\r');
     uart_send('\n');
+
+    asm volatile (
+        "stmfd sp!, {r0-r12, lr};\n"  
+        "mrs r0, spsr;\n"              
+        "stmfd sp!, {r0};\n"          
+    );
     
     PUT32(INTC_CONTROL, 0x1);
 
     while (1) {
     }
 }
+
+
+
+
+

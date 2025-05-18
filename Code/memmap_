@@ -1,6 +1,6 @@
 MEMORY {
-    p1_code (rx) : ORIGIN = 0x80010000, LENGTH = 64K
-    p1_data (rw) : ORIGIN = 0x80018000, LENGTH = 32K
+    os_code (rx) : ORIGIN = 0x80000000, LENGTH = 32K    /* OS code */
+    os_data (rw) : ORIGIN = 0x80008000, LENGTH = 32K    /* OS data and stack */
 }
 
 SECTIONS {
@@ -8,22 +8,21 @@ SECTIONS {
         _start = .;
         *(.text*)
         *(.rodata*)
-    } > p1_code
+    } > os_code
 
     .data : {
         *(.data*)
-    } > p1_data
+    } > os_data
 
     .bss : {
         *(.bss*)
         *(COMMON)
-    } > p1_data
+    } > os_data
 
     .stack (NOLOAD) : {
         . = ALIGN(8);
         _stack_bottom = .;
-        . += 0x2000;  /* 8KB stack */
+        . += 0x2000;     
         _stack_top = .;
-    } > p1_data
-    
+    } > os_data
 }

@@ -12,7 +12,7 @@ int main(void)
  
     while (1)
     {
-        for (c = 'A'; c <= 'B'; c++)
+        for (c = 'A'; c <= 'Z'; c++)
         {
             uart_send(c);
             uart_send('\r');
