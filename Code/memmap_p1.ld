@@ -1,0 +1,29 @@
+MEMORY {
+    p1_code (rx) : ORIGIN = 0x80020000, LENGTH = 64K
+    p1_data (rw) : ORIGIN = 0x80028000, LENGTH = 32K
+}
+
+SECTIONS {
+    .text : {
+        _start = .;
+        *(.text*)
+        *(.rodata*)
+    } > p1_code
+
+    .data : {
+        *(.data*)
+    } > p1_data
+
+    .bss : {
+        *(.bss*)
+        *(COMMON)
+    } > p1_data
+
+    .stack (NOLOAD) : {
+        . = ALIGN(8);
+        _stack_bottom = .;
+        . += 0x2000;  /* 8KB stack */
+        _stack_top = .;
+    } > p1_data
+    
+}

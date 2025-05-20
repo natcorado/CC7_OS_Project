@@ -1,12 +1,13 @@
+#include "uart.h"
+
 extern void PUT32(unsigned int, unsigned int);
 extern unsigned int GET32(unsigned int);
 extern void enable_irq(void);
+extern void disable_irq(void);
+extern unsigned int return_register(unsigned int reg);
+extern void load_context(unsigned int *ctx);
 
-#define UART0_BASE     0x44E09000
-#define UART_THR       (UART0_BASE + 0x00)
-#define UART_LSR       (UART0_BASE + 0x14)
-#define UART_LSR_THRE  0x20
-
+#define NUM_PROGRAMS 2
 #define DMTIMER2_BASE    0x48040000
 #define TCLR             (DMTIMER2_BASE + 0x38)
 #define TCRR             (DMTIMER2_BASE + 0x3C)
@@ -21,15 +22,21 @@ extern void enable_irq(void);
 #define CM_PER_BASE      0x44E00000
 #define CM_PER_TIMER2_CLKCTRL (CM_PER_BASE + 0x80)
 
+unsigned int context1[15]; // Context for program 1
+unsigned int context2[15]; // Context for program 2
+unsigned int *context_queue[NUM_PROGRAMS] = { context1, context2 };
+
+
 typedef struct {
     unsigned int pid;
     unsigned int sp;
     unsigned int state;
-
+    
 } PCB;
 
 PCB pcb_array[2];
 
+int queue_head = 0;
 unsigned int seed = 12345;
 
 unsigned int rand(void) {
@@ -39,46 +46,6 @@ unsigned int rand(void) {
 
 void delay(void) {
     for(volatile int i = 0; i < 10000; i++) { }
-}
-
-/*  UART RELATED FUNCTIONS
-    -- uart_send: send a character to the UART
-    -- uart_puts: send a string to the UART
-    -- uart_putnum: send a number to the UART (not used in this OS)
-    -- uart_puthex: send a hexadecimal number to the UART (not used in this OS)
-*/
-
-void uart_send(unsigned char x) {
-    while ((GET32(UART_LSR) & UART_LSR_THRE) == 0);
-    PUT32(UART_THR, x);
-}
-
-void uart_puts(const char *s) {
-    while (*s) {
-        uart_send(*s++);
-    }
-}
-
-void uart_putnum(unsigned int num) {
-    char buf[10];
-    int i = 0;
-    do {
-        buf[i++] = (num % 10) + '0';
-        num /= 10;
-    } while (num > 0);
-    while (i > 0) {
-        uart_send(buf[--i]);
-    }
-    uart_send('\n');
-}
-
-void uart_puthex(unsigned int num) {
-    const char *hex = "0123456789ABCDEF";
-    uart_puts("0x");
-    for (int i = 28; i >= 0; i -= 4) {
-        uart_send(hex[(num >> i) & 0xF]);
-    }
-    uart_send('\n');
 }
 
 /*  TIMER RELATED FUNCTIONS
@@ -104,33 +71,75 @@ void timer_init(void) {
     PUT32(TCLR, 0x3);
 }
 
-
 /* CPSR -> Current program status register
    SPSR -> Saved program status register: The SPSR is a 
    copy of the CPSR that gets automatically saved when:
    an interrupt occurs ????? :,) why?
-
 */
-void timer_irq_handler(void) {
 
-    PUT32(TISR, 0x2);
-    
-    
-    uart_send('!');
-    uart_send('\r');
-    uart_send('\n');
 
-    asm volatile (
-        "stmfd sp!, {r0-r12, lr};\n"  
-        "mrs r0, spsr;\n"              
-        "stmfd sp!, {r0};\n"          
-    );
+void store_context(unsigned int *ctx) {
+    // Iterates thorugh all registers and saves them to the context array
     
-    PUT32(INTC_CONTROL, 0x1);
-
-    while (1) {
+    for (int i = 0; i <= 15; i++) {
+        ctx[i] = return_register(i*4);
+        uart_putnum(i);
+        uart_puts("\r\n");
     }
 }
+
+void init_contexts(void) {
+    // Clear all registers for both contexts
+    uart_puts("Initializing contexts...\r\n");
+    for (int i = 0; i < 15; ++i) {
+        context1[i] = 0;
+        context2[i] = 0;
+    }
+    uart_puts("Setting up sp and lr.\r\n");
+    // Set up stack pointer and LR (entry point) for each program
+    
+    context1[13] = 0x80025000;
+    uart_send('1');
+    context1[14] = 0x80020000;
+    uart_send('2');
+    context2[13] = 0x80035000; 
+    uart_send('3');
+    context2[14] = 0x80030000;
+
+    uart_puts("Contexts initialized.\r\n");
+}
+
+void timer_irq_handler(void) {
+    disable_irq();
+    int prev = queue_head;
+    queue_head = (queue_head + 1) % NUM_PROGRAMS;
+
+    uart_puts("Starting context switch...\r\n");
+    store_context(context_queue[prev]);
+    uart_puts("Context saved. Loading next...\r\n");
+    //salto a la siguiente tarea
+
+    enable_irq();
+    load_context(context_queue[queue_head]);
+
+    // No return: load_context will restore and resume the next program
+}
+
+int main(void) {
+    uart_puts("Simple OS starting up...\r\n");
+
+    init_contexts();
+
+    timer_init();
+    enable_irq();
+
+    while (1) {
+        // Idle loop; all work is done in interrupts
+    }
+
+    return 0;
+}
+
 
 
 
