@@ -2,16 +2,16 @@
 
 extern void uart_send(unsigned char);
 extern void uart_puts(const char *s);
+extern void enable_irq(void);
+extern void timer_irq_handler(void);
 
 
 void timer_irq_handler(void) { while (1); }
 
-int main(void)
-{
+int main(void) {
     char c;
  
-    while (1)
-    {
+    while (1) {
         for (c = 'A'; c <= 'Z'; c++)
         {
             uart_send(c);

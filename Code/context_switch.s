@@ -1,21 +1,18 @@
 .section .text
 .syntax unified
 .code 32
-.global return_register
-.global load_context
 .extern uart_send
 
-// void return_register(int registerNum)
-// returns register 
-return_register:
-
-    bx lr
+// void store_context(unsigned int *ctx)
+// r0 = pointer to context array
+.global store_context
+store_context:
+    stmia   r0, {r0-r12, sp, lr}
+    bx      lr
 
 // void load_context(unsigned int *ctx)
 // Loads r0-r12, lr, and spsr from the memory pointed by ctx
+.global load_context
 load_context:
-    mov     r1, r0
-    ldmia   r1, {r0-r12, lr}
-    ldr     r2, [r1, #56]
-    msr     spsr_cxsf, r2
-    bx      lr
+    ldmia   r0, {r0-r12, sp, lr}
+    bx      lr  

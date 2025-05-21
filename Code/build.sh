@@ -16,9 +16,9 @@ arm-none-eabi-ld -T memmap_p1.ld startup.o context_switch.o uart.o process1.o -o
 arm-none-eabi-ld -T memmap_p2.ld startup.o context_switch.o uart.o process2.o -o process2.elf
 
 # Generate binary
-arm-none-eabi-objcopy -O binary os.elf os.bin
-arm-none-eabi-objcopy process1.elf -O binary process1.bin
-arm-none-eabi-objcopy process2.elf -O binary process2.bin
+arm-none-eabi-objcopy -O binary os.elf ./binary/os.bin
+arm-none-eabi-objcopy process1.elf -O binary ./binary/process1.bin
+arm-none-eabi-objcopy process2.elf -O binary ./binary/process2.bin
 
 # Remove -o files
 rm -f *.o
